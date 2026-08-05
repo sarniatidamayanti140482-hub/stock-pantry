@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIN CARD Dashboard Live</title>
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+    --bg-main: #f4f7fb;
+    --card-bg: #ffffff;
+    --text-primary: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --success-color: #16a34a;
+    --danger-color: #dc2626;
+    --warning-color: #d97706;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg-main);
+    margin: 0;
+    padding: 20px;
+    color: var(--text-primary);
+}
+
+.container {
+    max-width: 1350px;
+    margin: auto;
+}
+
+h1 {
+    margin: 0;
+    font-size: 26px;
+    color: #0f172a;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border-color);
+}
+
+/* Grid Layout Responsif */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.grid-split {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+@media (min-width: 1024px) {
+    .grid-split {
+        grid-template-columns: 1.1fr 1fr;
+    }
+}
+
+.stat {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.stat-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+input, select, button {
+    padding: 10px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+}
+
+input:focus, select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+button {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s, transform 0.1s;
+}
+
+button:hover {
+    background: var(--primary-hover);
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+/* Tabel UI Design */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    font-size: 13.5px;
+}
+
+th, td {
+    padding: 11px 13px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #475569;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: inset 0 -1px 0 var(--border-color);
+}
+
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+
+tbody tr:nth-child(even) { background-color: #f8fafc; }
+tbody tr:hover { background-color: #f1f5f9; transition: background-color 0.15s ease; }
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.in { background: var(--success-color); }
+.out { background: var(--danger-color); }
+.section { margin-top: 20px; }
+
+/* Custom Scrollbar */
+.scroll {
+    max-height: 380px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+}
+
+.scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.scroll::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+canvas { max-height: 250px; }
+#error { margin: 10px 0; font-weight: 600; line-height: 1.5; font-size: 14px; }
+.card.info { border-left: 5px solid var(--primary-color); }
+
+.text-stock-awal { color: #64748b; font-weight: 500; }
+.text-masuk { color: var(--success-color); font-weight: 500; }
+.text-keluar { color: var(--danger-color); font-weight: 500; }
+.text-saldo { 
+    color: #0f172a; 
+    font-weight: 700; 
+    display: flex; 
+    align-items: center; 
+    justify-content: flex-end; 
+    gap: 6px; 
+}
+.text-batas-order { color: var(--warning-color); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+    <div>
+        <h1>📦 BIN CARD Dashboard Live</h1>
+        <div style="color: #64748b; margin-top: 4px; font-size: 14px;">Adaro Persada Mandiri - MK & Cyber 2</div>
+    </div>
+</div>
+
+<div class="card controls">
+    <input id="searchInput" placeholder="Cari nama barang..." onkeyup="applyFilters()">
+    <input type="month" id="monthFilter" onchange="applyFilters()">
+    <select id="locationFilter" onchange="applyFilters()">
+        <option value="">Semua Lokasi</option>
+    </select>
+    <select id="categoryFilter" onchange="applyFilters()">
+        <option value="">Semua Kategori</option>
+    </select>
+    <select id="areaFilter" onchange="applyFilters()">
+        <option value="">Semua Area Kerja</option>
+    </select>
+    <button onclick="showAllBarang()">Semua Barang</button>
+    <button onclick="downloadCSV()">Download CSV</button>
+    <button onclick="loadData()" style="background:#1e293b;">Refresh Data</button>
+</div>
+
+<div id="error">🔄 Sedang memuat data...</div>
+
+<div class="grid">
+    <div class="card info">
+        <div>Rata-rata Keluar/Hari Kerja</div>
+        <div class="stat" id="avgDay">0</div>
+        <div class="stat-sub">Senin - Jumat (Sabtu & Minggu Off)</div>
+    </div>
+    <div class="card info">
+        <div>Rata-rata Keluar/Minggu Kerja</div>
+        <div class="stat" id="avgWeek">0</div>
+        <div class="stat-sub">Senin - Jumat (Sabtu & Minggu Off)</div>
+    </div>
+    <div class="card info">
+        <div>Rata-rata Keluar/Bulan Kerja</div>
+        <div class="stat" id="avgMonth">0</div>
+        <div class="stat-sub">Senin - Jumat (Sabtu & Minggu Off)</div>
+    </div>
+</div>
+
+<!-- Layout Split untuk Grafik dan Tabel Saldo -->
+<div class="grid-split">
+    <div class="card">
+        <h3 id="chartTitle" style="margin-top:0;">Data Keluar Barang</h3>
+        <canvas id="lineChart"></canvas>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0;">Saldo Akhir per Barang</h3>
+        <div class="scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Barang</th>
+                        <th>Satuan</th>
+                        <th class="text-right">Stock Awal</th>
+                        <th class="text-right">Masuk</th>
+                        <th class="text-right">Keluar</th>
+                        <th class="text-right">Saldo</th>
+                        <th class="text-right">Batas Order</th>
+                    </tr>
+                </thead>
+                <tbody id="saldoBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="section card">
+    <h3 style="margin-top:0;">Log Transaksi</h3>
+    <div class="scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>Tanggal</th>
+                    <th>Nama Barang</th>
+                    <th>Jenis</th>
+                    <th class="text-right">Jumlah</th>
+                    <th>Keterangan</th>
+                    <th>Lokasi</th>
+                    <th>Kategori</th>
+                    <th>Area Kerja</th>
+                    <th>Satuan</th>
+                </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+</div>
+
+<script>
+// ID Spreadsheet untuk "Stock Pantry Cyber 2"
+const SPREADSHEET_ID = "1Fv-c2cJMIFYfkRO0GV_fmE-yxn7uucb9_cs8C0d2c4E"; 
+
+let allRows = [];
+let chart = null;
+let filterTimeout = null;
+let loadTimeout = null;
+
+window.onload = function() {
+    loadData();
+};
+
+function showStatus(message, isError = false) {
+    let errDiv = document.getElementById('error');
+    if (!errDiv) return;
+    errDiv.innerHTML = message;
+    errDiv.style.color = isError ? '#dc2626' : '#2563eb';
+}
+
+function loadData() {
+    if(!SPREADSHEET_ID){
+        showStatus('❌ Error: ID Google Sheet belum dimasukkan ke dalam kode script.', true);
+        return;
+    }
+    showStatus('🔄 Sedang menyinkronkan data dari Google Sheet...');
+    
+    if (loadTimeout) clearTimeout(loadTimeout);
+    allRows = [];
+
+    // Metode 1: JSONP Script injection (Utama)
+    let old = document.getElementById('jsonp');
+    if(old) old.remove();
+
+    let s = document.createElement('script');
+    s.id = 'jsonp';
+    s.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?gid=0&tqx=responseHandler:handleData`;
+    
+    s.onerror = function() {
+        console.warn('Metode JSONP gagal, beralih ke CSV fallback...');
+        loadDataCSV();
+    };
+
+    document.body.appendChild(s);
+
+    // Timeout 3.5 detik jika JSONP tidak terespon (Fallback otomatis ke CSV)
+    loadTimeout = setTimeout(() => {
+        if (allRows.length === 0) {
+            console.warn('JSONP Timeout, mencoba pengambil CSV fallback...');
+            loadDataCSV();
+        }
+    }, 3500);
+}
+
+function loadDataCSV() {
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=0`;
+    fetch(csvUrl)
+        .then(res => {
+            if (!res.ok) throw new Error('HTTP status ' + res.status);
+            return res.text();
+        })
+        .then(csvText => {
+            parseCSVData(csvText);
+        })
+        .catch(err => {
+            console.error('CSV Fetch error:', err);
+            showStatus('⚠️ Gagal memuat data dari Cloud. Pastikan koneksi internet aktif.', true);
+        });
+}
+
+function parseCSVData(csvText) {
+    let lines = csvText.split(/\r?\n/);
+    if (lines.length <= 1) {
+        showStatus('⚠️ Data tidak ditemukan di dalam sheet.', true);
+        return;
+    }
+
+    function parseCSVLine(line) {
+        let result = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            let c = line[i];
+            if (c === '"') {
+                if (inQuotes && line[i+1] === '"') {
+                    cur += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c === ',' && !inQuotes) {
+                result.push(cur.trim());
+                cur = '';
+            } else {
+                cur += c;
+            }
+        }
+        result.push(cur.trim());
+        return result;
+    }
+
+    let rowsData = [];
+    for (let i = 0; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        let cols = parseCSVLine(lines[i]);
+        if (cols.length < 2) continue;
+
+        let rObj = {
+            c: cols.map(val => ({ v: val, f: val }))
+        };
+        rowsData.push(rObj);
+    }
+
+    handleData({ table: { rows: rowsData } });
+}
+
+Date.prototype.getWeekNumber = function() {
+    var d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
+    var dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+};
+
+function parseIndonesianDate(rawVal, formattedVal) {
+    let checkStr = String(formattedVal || rawVal || '').trim();
+    if (!checkStr) return null;
+
+    // Format GViz Date(YYYY,M,D)
+    let gvizMatch = checkStr.match(/Date\((\d+),(\d+),(\d+)\)/);
+    if (gvizMatch) {
+        return new Date(parseInt(gvizMatch[1]), parseInt(gvizMatch[2]), parseInt(gvizMatch[3]));
+    }
+
+    // Format DD/MM/YYYY
+    let mSlash = checkStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (mSlash) {
+        let day = parseInt(mSlash[1]);
+        let month = parseInt(mSlash[2]);
+        let year = parseInt(mSlash[3]);
+        return new Date(year, month - 1, day);
+    }
+
+    // Format Teks Indonesia ("3 Agustus 2026")
+    const monthsId = {
+        'januari': 0, 'februari': 1, 'maret': 2, 'april': 3, 'mei': 4, 'juni': 5,
+        'juli': 6, 'agustus': 7, 'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
+    };
+    let indoMatch = checkStr.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
+    if (indoMatch) {
+        let day = parseInt(indoMatch[1]);
+        let mName = indoMatch[2].toLowerCase();
+        let year = parseInt(indoMatch[3]);
+        if (monthsId.hasOwnProperty(mName)) {
+            return new Date(year, monthsId[mName], day);
+        }
+    }
+
+    let d = new Date(checkStr);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+window.handleData = function(res) {
+    try {
+        if (loadTimeout) clearTimeout(loadTimeout);
+        allRows = [];
+
+        if (!res || !res.table || !res.table.rows || res.table.rows.length === 0) {
+            showStatus('⚠️ Data kosong atau format sheet tidak sesuai.', true);
+            return;
+        }
+
+        showStatus('');
+        let rows = res.table.rows;
+        let tempRows = [];
+        
+        let uniqueLocations = new Set();
+        let uniqueCategories = new Set();
+        let uniqueAreas = new Set();
+
+        rows.forEach(r => {
+            if (!r || !r.c) return;
+
+            let tanggalRaw = r.c[0] ? (r.c[0].f || r.c[0].v || '') : '';
+            let nama       = r.c[1] ? (r.c[1].v || '').toString().trim() : '';
+            let jenis      = r.c[2] ? (r.c[2].v || '').toString().trim() : '';
+            
+            // Raw numerical parsing
+            let rawJml = r.c[3] ? r.c[3].v : 0;
+            let jumlah = typeof rawJml === 'number' ? rawJml : parseFloat(String(rawJml).replace(/[^0-9.-]+/g,"")) || 0;
+
+            let ket        = r.c[4] ? (r.c[4].v || '').toString().trim() : '';
+            let lokasi     = r.c[5] ? (r.c[5].v || '').toString().trim() : '';
+            let kategori   = r.c[6] ? (r.c[6].v || '').toString().trim() : ''; 
+            let areaKerja  = r.c[7] ? (r.c[7].v || '').toString().trim() : ''; 
+            let satuan     = r.c[8] ? (r.c[8].v || '').toString().trim() : '';
+
+            // Skip header baris jika terbaca
+            if (!nama || nama.toLowerCase() === 'nama barang' || tanggalRaw.toLowerCase() === 'tanggal') return;
+
+            if (lokasi) uniqueLocations.add(lokasi);
+            if (kategori) uniqueCategories.add(kategori);
+            if (areaKerja) uniqueAreas.add(areaKerja); 
+
+            let year = null, month = null, day = null, week = null;
+            let dateObj = parseIndonesianDate(r.c[0] ? r.c[0].v : null, r.c[0] ? r.c[0].f : null);
+
+            if (dateObj) {
+                year = dateObj.getFullYear();
+                month = dateObj.getMonth() + 1;
+                day = dateObj.getDate();
+                week = dateObj.getWeekNumber();
+            }
+
+            let searchText = (tanggalRaw + ' ' + nama + ' ' + satuan + ' ' + kategori + ' ' + jenis + ' ' + ket + ' ' + jumlah + ' ' + lokasi + ' ' + areaKerja).toLowerCase();
+            
+            tempRows.push({
+                tanggal: tanggalRaw, 
+                nama, 
+                satuan,
+                jenis, 
+                jumlah, 
+                ket, 
+                lokasi, 
+                kategori,
+                areaKerja, 
+                month, 
+                year, 
+                day, 
+                week,
+                dateObj,
+                searchText
+            });
+        });
+
+        allRows = tempRows;
+
+        if (allRows.length === 0) {
+            showStatus('⚠️ Baris data tidak terdeteksi. Pastikan data diisi di tab Log_Transaksi.', true);
+            return;
+        }
+
+        // Mengisi Filter Dropdown
+        let locSelect = document.getElementById('locationFilter');
+        while (locSelect.options.length > 1) { locSelect.remove(1); }
+        [...uniqueLocations].sort().forEach(loc => {
+            let option = document.createElement('option');
+            option.value = loc; option.text = loc;
+            locSelect.appendChild(option);
+        });
+
+        let catSelect = document.getElementById('categoryFilter');
+        while (catSelect.options.length > 1) { catSelect.remove(1); }
+        [...uniqueCategories].sort().forEach(cat => {
+            let option = document.createElement('option');
+            option.value = cat; option.text = cat;
+            catSelect.appendChild(option);
+        });
+
+        let areaSelect = document.getElementById('areaFilter');
+        while (areaSelect.options.length > 1) { areaSelect.remove(1); }
+        [...uniqueAreas].sort().forEach(area => {
+            let option = document.createElement('option');
+            option.value = area; option.text = area;
+            areaSelect.appendChild(option);
+        });
+
+        applyFilters();
+
+    } catch(e) {
+        console.error(e);
+        showStatus('Gagal membaca data dari Google Sheet.', true);
+    }
+};
+
+function applyFilters(){
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => {
+        let search = document.getElementById('searchInput').value.trim().toLowerCase();
+        let monthInput = document.getElementById('monthFilter').value;
+        let locInput = document.getElementById('locationFilter').value; 
+        let catInput = document.getElementById('categoryFilter').value;
+        let areaInput = document.getElementById('areaFilter').value; 
+
+        let data = allRows.filter(r => {
+            let okSearch = !search || (r.searchText || '').includes(search);
+            let okMonth = true, okLoc = true, okCat = true, okArea = true;
+
+            if(monthInput){
+                let parts = monthInput.split('-');
+                let filterYear = parseInt(parts[0]);
+                let filterMonth = parseInt(parts[1]);
+                okMonth = (r.year === filterYear && r.month === filterMonth);
+            }
+            
+            if(locInput){ okLoc = (r.lokasi === locInput); }
+            if(catInput){ okCat = (r.kategori === catInput); }
+            if(areaInput){ okArea = (r.areaKerja === areaInput); } 
+
+            return okSearch && okMonth && okLoc && okCat && okArea;
+        });
+
+        render(data);
+    }, 150);
+}
+
+function render(data){
+    let tbody = document.getElementById('tbody');
+    let saldoBody = document.getElementById('saldoBody');
+
+    let keluarTotalJumlah = 0;
+    let uniqueDays = new Set(), uniqueWeeks = new Set(), uniqueMonths = new Set();
+    let keluarWorkdayJumlah = 0;
+    let uniqueWorkdays = new Set(), uniqueWorkweeks = new Set(), uniqueWorkmonths = new Set();
+
+    let tbodyHtml = [];
+    let dailyOutData = {};   
+    let monthlyOutData = {}; 
+
+    let monthInput = document.getElementById('monthFilter').value;
+    let filterYear = null, filterMonth = null;
+    if (monthInput) {
+        let parts = monthInput.split('-');
+        filterYear = parseInt(parts[0]);
+        filterMonth = parseInt(parts[1]);
+    }
+
+    data.forEach(r => {
+        let jenis = (r.jenis || '').toLowerCase().trim();
+        let barang = (r.nama || '').toString().trim();
+
+        if(jenis === 'keluar') {
+            let jumlahKeluar = Number(r.jumlah) || 0;
+            keluarTotalJumlah += jumlahKeluar;
+            
+            let dayOfWeek = r.dateObj ? r.dateObj.getDay() : null;
+            let isWorkday = (dayOfWeek !== null && dayOfWeek !== 0 && dayOfWeek !== 6);
+
+            if (isWorkday) {
+                keluarWorkdayJumlah += jumlahKeluar;
+                if(r.year && r.month && r.day) uniqueWorkdays.add(`${r.year}-${r.month}-${r.day}`);
+                if(r.year && r.week) uniqueWorkweeks.add(`${r.year}-${r.week}`);
+                if(r.year && r.month) uniqueWorkmonths.add(`${r.year}-${r.month}`);
+            }
+
+            if(r.year && r.month && r.day) uniqueDays.add(`${r.year}-${r.month}-${r.day}`);
+            if(r.year && r.week) uniqueWeeks.add(`${r.year}-${r.week}`);
+            if(r.year && r.month) uniqueMonths.add(`${r.year}-${r.month}`);
+
+            if(r.year && r.month) {
+                let key = `${r.year}-${String(r.month).padStart(2, '0')}`;
+                monthlyOutData[key] = (monthlyOutData[key] || 0) + jumlahKeluar;
+            }
+
+            if(monthInput && r.year === filterYear && r.month === filterMonth && r.day) {
+                dailyOutData[r.day] = (dailyOutData[r.day] || 0) + jumlahKeluar;
+            }
+        }
+
+        tbodyHtml.push(`
+        <tr>
+            <td>${r.tanggal}</td>
+            <td style="font-weight: 500;">${barang}</td>
+            <td><span class="badge ${jenis==='masuk'?'in':'out'}">${r.jenis || '-'}</span></td>
+            <td class="text-right" style="font-weight: 600;">${r.jumlah}</td>
+            <td>${r.ket || '-'}</td>
+            <td>${r.lokasi || '-'}</td>
+            <td>${r.kategori || '-'}</td>
+            <td>${r.areaKerja || '-'}</td>
+            <td>${r.satuan || '-'}</td>
+        </tr>`);
+    });
+
+    tbody.innerHTML = tbodyHtml.join('');
+
+    let locInput = document.getElementById('locationFilter').value; 
+    let catInput = document.getElementById('categoryFilter').value;
+    let areaInput = document.getElementById('areaFilter').value;
+    let search = document.getElementById('searchInput').value.trim().toLowerCase();
+
+    // Hitung Saldo Real-Time
+    let saldoBarang = {};
+    allRows.forEach(r => {
+        let okSearch = !search || (r.searchText || '').includes(search);
+        let okLoc = !locInput || (r.lokasi === locInput);
+        let okCat = !catInput || (r.kategori === catInput);
+        let okArea = !areaInput || (r.areaKerja === areaInput);
+
+        if (okSearch && okLoc && okCat && okArea) {
+            let barang = (r.nama || '').toString().trim();
+            if (!barang) return;
+
+            if (!saldoBarang[barang]) {
+                saldoBarang[barang] = { satuan: r.satuan || '-', stockAwal: 0, masuk: 0, keluar: 0 };
+            } else if (r.satuan && (saldoBarang[barang].satuan === '-' || !saldoBarang[barang].satuan)) {
+                saldoBarang[barang].satuan = r.satuan;
+            }
+
+            let jenis = (r.jenis || '').toLowerCase().trim();
+            let val = Number(r.jumlah) || 0;
+
+            if (monthInput) {
+                let isBefore = false;
+                let isCurrent = false;
+
+                if (r.year < filterYear) {
+                    isBefore = true;
+                } else if (r.year === filterYear) {
+                    if (r.month < filterMonth) {
+                        isBefore = true;
+                    } else if (r.month === filterMonth) {
+                        isCurrent = true;
+                    }
+                }
+
+                if (isBefore) {
+                    if (jenis === 'masuk') saldoBarang[barang].stockAwal += val;
+                    if (jenis === 'keluar') saldoBarang[barang].stockAwal -= val;
+                } else if (isCurrent) {
+                    if (jenis === 'masuk') saldoBarang[barang].masuk += val;
+                    if (jenis === 'keluar') saldoBarang[barang].keluar += val;
+                }
+            } else {
+                if (jenis === 'masuk') saldoBarang[barang].masuk += val;
+                if (jenis === 'keluar') saldoBarang[barang].keluar += val;
+            }
+        }
+    });
+
+    // Hitung Rata-rata Bulanan Historis
+    let historicalWorkdayKeluar = {}; 
+    let overallActiveMonths = new Set(); 
+
+    allRows.forEach(r => {
+        let okSearch = !search || (r.searchText || '').includes(search);
+        let okLoc = !locInput || (r.lokasi === locInput);
+        let okCat = !catInput || (r.kategori === catInput);
+        let okArea = !areaInput || (r.areaKerja === areaInput);
+
+        if (okSearch && okLoc && okCat && okArea) {
+            let barang = (r.nama || '').toString().trim();
+            if (!barang) return;
+
+            let jenis = (r.jenis || '').toLowerCase().trim();
+            let val = Number(r.jumlah) || 0;
+
+            let dayOfWeek = r.dateObj ? r.dateObj.getDay() : null;
+            let isWorkday = (dayOfWeek !== null && dayOfWeek !== 0 && dayOfWeek !== 6);
+
+            if (jenis === 'keluar' && isWorkday) {
+                historicalWorkdayKeluar[barang] = (historicalWorkdayKeluar[barang] || 0) + val;
+                if (r.year && r.month) {
+                    overallActiveMonths.add(`${r.year}-${r.month}`);
+                }
+            }
+        }
+    });
+
+    let totalActiveMonths = overallActiveMonths.size || 1;
+
+    // Render Tabel Saldo Akhir
+    let saldoHtml = [];
+    Object.keys(saldoBarang).sort().forEach(b => {
+        let s = saldoBarang[b];
+        let saldo = s.stockAwal + s.masuk - s.keluar;
+
+        let totalKeluarHistoris = historicalWorkdayKeluar[b] || 0;
+        let avgMonthlyKeluar = totalKeluarHistoris / totalActiveMonths;
+
+        let warningBadge = '';
+        if (saldo <= avgMonthlyKeluar && avgMonthlyKeluar > 0) {
+            warningBadge = `<span class="badge out" style="padding: 2px 6px; font-size: 10px; border-radius: 4px;" title="Segera lakukan pemesanan ulang!">Reorder</span>`;
+        }
+
+        if (s.stockAwal !== 0 || s.masuk !== 0 || s.keluar !== 0 || saldo !== 0) {
+            saldoHtml.push(`
+            <tr>
+                <td style="font-weight: 500;">${b}</td>
+                <td>${s.satuan || '-'}</td>
+                <td class="text-stock-awal text-right">${s.stockAwal}</td>
+                <td class="text-masuk text-right">${s.masuk}</td>
+                <td class="text-keluar text-right">${s.keluar}</td>
+                <td class="text-right">
+                    <div class="text-saldo">
+                        ${warningBadge}
+                        <span>${saldo}</span>
+                    </div>
+                </td>
+                <td class="text-batas-order text-right">${avgMonthlyKeluar.toFixed(1)}</td>
+            </tr>`);
+        }
+    });
+
+    saldoBody.innerHTML = saldoHtml.join('');
+
+    let avgDayVal = 0, avgWeekVal = 0, avgMonthVal = 0;
+    if(uniqueWorkdays.size > 0) avgDayVal = keluarWorkdayJumlah / uniqueWorkdays.size;
+    if(uniqueWorkweeks.size > 0) avgWeekVal = keluarWorkdayJumlah / uniqueWorkweeks.size;
+    if(uniqueWorkmonths.size > 0) avgMonthVal = keluarWorkdayJumlah / uniqueWorkmonths.size;
+
+    document.getElementById('avgDay').innerText = avgDayVal.toFixed(1);
+    document.getElementById('avgWeek').innerText = avgWeekVal.toFixed(1);
+    document.getElementById('avgMonth').innerText = avgMonthVal.toFixed(1);
+
+    updateDynamicChart(monthInput, filterYear, filterMonth, dailyOutData, monthlyOutData);
+}
+
+function updateDynamicChart(monthInput, filterYear, filterMonth, dailyOutData, monthlyOutData) {
+    let ctx = document.getElementById('lineChart');
+    if(chart) chart.destroy();
+
+    let labels = [];
+    let chartData = [];
+    let titleElement = document.getElementById('chartTitle');
+
+    const monthNames = {
+        "01": "Januari", "02": "Februari", "03": "Maret", "04": "April", 
+        "05": "Mei", "06": "Juni", "07": "Juli", "08": "Agustus", 
+        "09": "September", "10": "Oktober", "11": "November", "12": "Desember"
+    };
+
+    if (monthInput) {
+        let selectedMonthName = monthNames[String(filterMonth).padStart(2, '0')] || '';
+        titleElement.innerText = `Tren Keluar Harian (${selectedMonthName} ${filterYear})`;
+
+        let totalDays = new Date(filterYear, filterMonth, 0).getDate();
+        
+        for (let d = 1; d <= totalDays; d++) {
+            labels.push(`Tgl ${d}`);
+            chartData.push(dailyOutData[d] || 0); 
+        }
+    } else {
+        titleElement.innerText = "Tren Keluar Bulanan (Histori All-Time)";
+
+        let sortedMonths = Object.keys(monthlyOutData).sort();
+        let lastMonths = sortedMonths.slice(-12);
+
+        lastMonths.forEach(mKey => {
+            let parts = mKey.split('-'); 
+            labels.push(`${monthNames[parts[1]]} ${parts[0]}`);
+            chartData.push(monthlyOutData[mKey]);
+        });
+
+        if(labels.length === 0) {
+            labels = ["Tidak Ada Data Keluar"];
+            chartData = [0];
+        }
+    }
+
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Jumlah Barang Keluar',
+                data: chartData,
+                borderColor: '#dc2626',
+                backgroundColor: 'rgba(220, 38, 38, 0.08)',
+                borderWidth: 2.5,
+                tension: 0.35, 
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#dc2626'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 11 } }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1, font: { size: 11 } }
+                }
+            }
+        }
+    });
+}
+
+function showAllBarang(){
+    document.getElementById('searchInput').value = '';
+    document.getElementById('monthFilter').value = '';
+    document.getElementById('locationFilter').value = ''; 
+    document.getElementById('categoryFilter').value = ''; 
+    document.getElementById('areaFilter').value = ''; 
+    applyFilters();
+}
+
+function downloadCSV(){
+    let rows = [...document.querySelectorAll('#tbody tr')];
+    let csv = 'Tanggal,Nama Barang,Jenis,Jumlah,Keterangan,Lokasi,Kategori,Area Kerja,Satuan\n'; 
+    rows.forEach(r => {
+        let c = r.querySelectorAll('td');
+        if(c.length){
+            let tgl    = c[0] ? c[0].innerText : '';
+            let brg    = c[1] ? c[1].innerText : '';
+            let jns    = c[2] ? c[2].innerText : '';
+            let jml    = c[3] ? c[3].innerText : '';
+            let ket    = c[4] ? c[4].innerText : '';
+            let lok    = c[5] ? c[5].innerText : '';
+            let kat    = c[6] ? c[6].innerText : '';
+            let area   = c[7] ? c[7].innerText : ''; 
+            let stn    = c[8] ? c[8].innerText : '';
+            csv += `"${tgl}","${brg}","${jns}","${jml}","${ket}","${lok}","${kat}","${area}","${stn}"\n`;
+        }
+    });
+    let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    let a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bincard_log_transaksi.csv';
+    a.click();
+}
+</script>
+</body>
+</html>
