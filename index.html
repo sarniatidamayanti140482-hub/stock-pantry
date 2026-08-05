@@ -58,7 +58,6 @@ h1 {
     border: 1px solid var(--border-color);
 }
 
-/* Grid Layout Responsif */
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -127,7 +126,6 @@ button:active {
     transform: scale(0.98);
 }
 
-/* Tabel UI Design */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -170,7 +168,6 @@ tbody tr:hover { background-color: #f1f5f9; transition: background-color 0.15s e
 .out { background: var(--danger-color); }
 .section { margin-top: 20px; }
 
-/* Custom Scrollbar */
 .scroll {
     max-height: 380px;
     overflow-y: auto;
@@ -261,7 +258,6 @@ canvas { max-height: 250px; }
     </div>
 </div>
 
-<!-- Layout Split untuk Grafik dan Tabel Saldo -->
 <div class="grid-split">
     <div class="card">
         <h3 id="chartTitle" style="margin-top:0;">Data Keluar Barang</h3>
@@ -314,13 +310,20 @@ canvas { max-height: 250px; }
 </div>
 
 <script>
-// ID Spreadsheet untuk "Stock Pantry Cyber 2"
 const SPREADSHEET_ID = "1Fv-c2cJMIFYfkRO0GV_fmE-yxn7uucb9_cs8C0d2c4E"; 
 
 let allRows = [];
 let chart = null;
 let filterTimeout = null;
 let loadTimeout = null;
+
+// Handling Google GViz API callback namespace to prevent silent script failure
+window.google = window.google || {};
+window.google.visualization = window.google.visualization || {};
+window.google.visualization.Query = window.google.visualization.Query || {};
+window.google.visualization.Query.setResponse = function(res) {
+    handleData(res);
+};
 
 window.onload = function() {
     loadData();
@@ -343,13 +346,22 @@ function loadData() {
     if (loadTimeout) clearTimeout(loadTimeout);
     allRows = [];
 
-    // Metode 1: JSONP Script injection (Utama)
+    // Hapus skrip JSONP lama jika ada
     let old = document.getElementById('jsonp');
     if(old) old.remove();
 
+    // Pastikan handler google.visualization terpasang
+    window.google = window.google || {};
+    window.google.visualization = window.google.visualization || {};
+    window.google.visualization.Query = window.google.visualization.Query || {};
+    window.google.visualization.Query.setResponse = function(res) {
+        handleData(res);
+    };
+
     let s = document.createElement('script');
     s.id = 'jsonp';
-    s.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?gid=0&tqx=responseHandler:handleData`;
+    // Menargetkan tab 'Log_Transaksi' secara langsung
+    s.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=Log_Transaksi&tqx=responseHandler:handleData`;
     
     s.onerror = function() {
         console.warn('Metode JSONP gagal, beralih ke CSV fallback...');
@@ -358,35 +370,53 @@ function loadData() {
 
     document.body.appendChild(s);
 
-    // Timeout 3.5 detik jika JSONP tidak terespon (Fallback otomatis ke CSV)
+    // Timeout fallback 2.5 detik
     loadTimeout = setTimeout(() => {
         if (allRows.length === 0) {
             console.warn('JSONP Timeout, mencoba pengambil CSV fallback...');
             loadDataCSV();
         }
-    }, 3500);
+    }, 2500);
 }
 
 function loadDataCSV() {
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=0`;
-    fetch(csvUrl)
-        .then(res => {
-            if (!res.ok) throw new Error('HTTP status ' + res.status);
-            return res.text();
-        })
-        .then(csvText => {
-            parseCSVData(csvText);
-        })
-        .catch(err => {
-            console.error('CSV Fetch error:', err);
-            showStatus('⚠️ Gagal memuat data dari Cloud. Pastikan koneksi internet aktif.', true);
-        });
+    const urls = [
+        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Log_Transaksi`,
+        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=0`,
+        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/pub?sheet=Log_Transaksi&output=csv`,
+        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/pub?gid=0&output=csv`
+    ];
+
+    let fetchNext = (index) => {
+        if (index >= urls.length) {
+            showStatus('⚠️ Gagal memuat data dari Cloud. Pastikan Google Sheet memiliki tab bernama "Log_Transaksi".', true);
+            return;
+        }
+
+        fetch(urls[index])
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.text();
+            })
+            .then(csvText => {
+                if (!csvText || csvText.includes('<!DOCTYPE html>') || csvText.includes('google-signin')) {
+                    throw new Error('ACCESS_DENIED_OR_HTML');
+                }
+                parseCSVData(csvText);
+            })
+            .catch(err => {
+                console.warn(`Fallback URL ${index} gagal, mencoba opsi berikutnya...`, err);
+                fetchNext(index + 1);
+            });
+    };
+
+    fetchNext(0);
 }
 
 function parseCSVData(csvText) {
     let lines = csvText.split(/\r?\n/);
     if (lines.length <= 1) {
-        showStatus('⚠️ Data tidak ditemukan di dalam sheet.', true);
+        showStatus('⚠️ Data tidak ditemukan di dalam sheet Log_Transaksi.', true);
         return;
     }
 
@@ -441,13 +471,11 @@ function parseIndonesianDate(rawVal, formattedVal) {
     let checkStr = String(formattedVal || rawVal || '').trim();
     if (!checkStr) return null;
 
-    // Format GViz Date(YYYY,M,D)
     let gvizMatch = checkStr.match(/Date\((\d+),(\d+),(\d+)\)/);
     if (gvizMatch) {
         return new Date(parseInt(gvizMatch[1]), parseInt(gvizMatch[2]), parseInt(gvizMatch[3]));
     }
 
-    // Format DD/MM/YYYY
     let mSlash = checkStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
     if (mSlash) {
         let day = parseInt(mSlash[1]);
@@ -456,7 +484,6 @@ function parseIndonesianDate(rawVal, formattedVal) {
         return new Date(year, month - 1, day);
     }
 
-    // Format Teks Indonesia ("3 Agustus 2026")
     const monthsId = {
         'januari': 0, 'februari': 1, 'maret': 2, 'april': 3, 'mei': 4, 'juni': 5,
         'juli': 6, 'agustus': 7, 'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
@@ -500,7 +527,6 @@ window.handleData = function(res) {
             let nama       = r.c[1] ? (r.c[1].v || '').toString().trim() : '';
             let jenis      = r.c[2] ? (r.c[2].v || '').toString().trim() : '';
             
-            // Raw numerical parsing
             let rawJml = r.c[3] ? r.c[3].v : 0;
             let jumlah = typeof rawJml === 'number' ? rawJml : parseFloat(String(rawJml).replace(/[^0-9.-]+/g,"")) || 0;
 
@@ -510,7 +536,6 @@ window.handleData = function(res) {
             let areaKerja  = r.c[7] ? (r.c[7].v || '').toString().trim() : ''; 
             let satuan     = r.c[8] ? (r.c[8].v || '').toString().trim() : '';
 
-            // Skip header baris jika terbaca
             if (!nama || nama.toLowerCase() === 'nama barang' || tanggalRaw.toLowerCase() === 'tanggal') return;
 
             if (lokasi) uniqueLocations.add(lokasi);
